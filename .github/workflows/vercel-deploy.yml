@@ -1,0 +1,37 @@
+name: Vercel deploy
+
+# Deploys every pushed branch to the Vercel project `excalidraw-vibecheck`:
+# `main` becomes production, any other branch (including repair branches behind
+# draft PRs) becomes a preview tagged with the commit SHA so VibeCheck can
+# resolve it.
+
+on:
+  push:
+
+concurrency:
+  group: vercel-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --global vercel@59
+      - name: Deploy
+        run: |
+          ARGS=""
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then ARGS="--prod"; fi
+          vercel deploy --yes --token "$VERCEL_TOKEN" $ARGS \
+            -m githubCommitSha="$GITHUB_SHA" \
+            -m githubCommitRef="$GITHUB_REF_NAME" \
+            -m githubCommitRepo="${GITHUB_REPOSITORY#*/}" \
+            -m githubCommitOrg="${GITHUB_REPOSITORY_OWNER}" \
+            -m githubDeployment=1
